@@ -415,106 +415,57 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--pr
   </div>
 </main>
 
-<script src="https://accounts.google.com/gsi/client" async></script>
 <script>
 // ── CONFIG ─────────────────────────────────────────────────────────────────
-var SHEET_ID   = "16qH7wuPUQi0eZY3OP5NHjYwwOKTg1HG6gLZdndu9G-A";
-var FOLDER_ID  = "1LcL_4WnUpKXiIt81fwsfo-bGZjEvV5s6";
-var CLIENT_ID  = "946106971140-leij6o480v18pptvlqnctjncn7f8dlbt.apps.googleusercontent.com";
-var SHEET_NAME = "גיליון1";
+var API_URL  = "https://script.google.com/macros/s/AKfycbzAGuZ1aray_K7YZ8Q88XCVWQZh45dym2_7OZsk4tmFLK32X0aCTVLQoJgC0Fq-KmNu/exec";
 var ADMIN_PASS = "admin123";
-var SCOPES     = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file";
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 var S = {
   view:"user", username:"", tab:"link", filter:"הכל",
   adminTab:"all", file:null, receipts:[], detailUser:null,
-  selected:new Set(), confirmAction:null, token:null
+  selected:new Set(), confirmAction:null
 };
 var isEn = false;
 
-// ── GOOGLE AUTH ────────────────────────────────────────────────────────────
-function initGoogleAuth() {
-  var tryInit = function() {
-    if (window.google && google.accounts) {
-      window._tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: function(resp) {
-          if (resp.access_token) {
-            S.token = resp.access_token;
-            hide("auth-banner"); hide("admin-auth-banner");
-            if (S.view === "admin" && window.adminIn) loadReceipts();
-          }
-        }
-      });
-    } else { setTimeout(tryInit, 300); }
-  };
-  tryInit();
-}
-
-function signIn() { window._tokenClient && window._tokenClient.requestAccessToken(); }
-
 // ── API ────────────────────────────────────────────────────────────────────
-function authHeader() { return { "Authorization": "Bearer " + S.token, "Content-Type": "application/json" }; }
+function apiGet(action, params) {
+  var url = API_URL + "?action=" + action;
+  if (params) Object.keys(params).forEach(function(k){ url += "&"+k+"="+encodeURIComponent(params[k]); });
+  return fetch(url).then(function(r){return r.json();});
+}
 
-function apiGet(url) {
-  return fetch(url, { headers: { "Authorization": "Bearer " + S.token } }).then(function(r) { return r.json(); });
-}
-function apiPut(url, body) {
-  return fetch(url, { method:"PUT", headers: authHeader(), body: JSON.stringify(body) }).then(function(r) { return r.json(); });
-}
-function apiPost(url, body) {
-  return fetch(url, { method:"POST", headers: authHeader(), body: JSON.stringify(body) }).then(function(r) { return r.json(); });
+function apiPost(data) {
+  return fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(data)
+  }).then(function(r){return r.json();});
 }
 
 function addReceipt(username, type, content) {
-  var now = new Date();
-  var pad = function(n) { return ("0"+n).slice(-2); };
-  var dateStr = pad(now.getDate())+"/"+pad(now.getMonth()+1)+"/"+now.getFullYear()+" "+pad(now.getHours())+":"+pad(now.getMinutes());
-  var id = Math.random().toString(36).slice(2,10);
-  var url = "https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+"/values/"+encodeURIComponent(SHEET_NAME)+"!A:F:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS";
-  return apiPost(url, { values: [[id, username, type, content, dateStr, "לא נבדק"]] });
+  return apiPost({ action:"addReceipt", username:username, type:type, content:content });
 }
 
 function getReceipts() {
-  var url = "https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+"/values/"+encodeURIComponent(SHEET_NAME)+"!A:F";
-  return apiGet(url).then(function(data) {
-    var rows = (data.values || []).slice(1);
-    return rows.map(function(r, i) {
-      return { rowIndex:i+2, id:r[0]||"", user:r[1]||"", type:r[2]||"", content:r[3]||"", uploadedAt:r[4]||"", status:r[5]||"לא נבדק" };
-    });
+  return apiGet("getReceipts").then(function(data){
+    return Array.isArray(data) ? data : [];
   });
 }
 
 function setStatusAPI(rowIndex, status) {
-  var url = "https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+"/values/"+encodeURIComponent(SHEET_NAME)+"!F"+rowIndex+"?valueInputOption=USER_ENTERED";
-  return apiPut(url, { values: [[status]] });
+  return apiPost({ action:"setStatus", rowIndex:rowIndex, status:status });
 }
 
 function deleteRow(rowIndex) {
-  var url = "https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+":batchUpdate";
-  return fetch(url, {
-    method:"POST", headers: authHeader(),
-    body: JSON.stringify({ requests:[{ deleteDimension:{ range:{ sheetId:0, dimension:"ROWS", startIndex:rowIndex-1, endIndex:rowIndex } } }] })
-  }).then(function(r) { return r.json(); });
+  return apiPost({ action:"deleteReceipt", rowIndex:rowIndex });
 }
 
 function bulkDeleteRows(indexes) {
-  indexes.sort(function(a,b){return b-a;});
-  var requests = indexes.map(function(idx) {
-    return { deleteDimension:{ range:{ sheetId:0, dimension:"ROWS", startIndex:idx-1, endIndex:idx } } };
-  });
-  var url = "https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+":batchUpdate";
-  return fetch(url, { method:"POST", headers: authHeader(), body: JSON.stringify({ requests:requests }) }).then(function(r){return r.json();});
+  return apiPost({ action:"bulkDelete", rowIndexes:indexes });
 }
 
 function bulkSetStatusAPI(indexes, status) {
-  var data = indexes.map(function(idx) {
-    return { range: SHEET_NAME+"!F"+idx, values:[[status]] };
-  });
-  var url = "https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+"/values:batchUpdate";
-  return fetch(url, { method:"POST", headers: authHeader(), body: JSON.stringify({ valueInputOption:"USER_ENTERED", data:data }) }).then(function(r){return r.json();});
+  return apiPost({ action:"bulkSetStatus", rowIndexes:indexes, status:status });
 }
 
 function uploadToDrive(file) {
@@ -522,14 +473,8 @@ function uploadToDrive(file) {
     var reader = new FileReader();
     reader.onload = function(e) {
       var b64 = e.target.result.split(",")[1];
-      var meta = JSON.stringify({ name:file.name, parents:[FOLDER_ID] });
-      var boundary = "foo_bar_baz";
-      var body = "--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+meta+"\r\n--"+boundary+"\r\nContent-Type: "+file.type+"\r\nContent-Transfer-Encoding: base64\r\n\r\n"+b64+"\r\n--"+boundary+"--";
-      fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", {
-        method:"POST",
-        headers:{ "Authorization":"Bearer "+S.token, "Content-Type":"multipart/related; boundary="+boundary },
-        body: body
-      }).then(function(r){return r.json();}).then(function(d){ resolve(d.webViewLink||""); }).catch(reject);
+      apiPost({ action:"uploadImage", base64Data:b64, fileName:file.name, mimeType:file.type })
+        .then(function(d){ resolve(d.url||""); }).catch(reject);
     };
     reader.readAsDataURL(file);
   });
@@ -579,7 +524,7 @@ function userLogin(){
   S.username=n;
   $("user-greeting").textContent=t().greet+n+" 👋";
   hide("user-login");show("user-upload");
-  if(!S.token)show("auth-banner"); else hide("auth-banner");
+  hide("auth-banner");
 }
 function userLogout(){S.username="";$("username-input").value="";hide("user-upload");show("user-login");}
 function switchTab(tab){
@@ -599,7 +544,6 @@ function showErr(msg){$("upload-error").textContent=msg;show("upload-error");}
 
 function submitReceipt(){
   hide("upload-error");hide("upload-success");
-  if(!S.token){signIn();return;}
   if(S.tab==="link"){
     var link=$("link-input").value.trim();if(!link){showErr(isEn?"Enter a link":"הכנס קישור");return;}
     spin(true,isEn?"Uploading...":"מעלה...");
@@ -620,7 +564,6 @@ function submitReceipt(){
 }
 
 function loadHistory(){
-  if(!S.token){show("history-empty");return;}
   show("history-loading");hide("history-list");hide("history-empty");
   getReceipts().then(function(data){
     hide("history-loading");
@@ -640,14 +583,12 @@ function adminLogin(){
   var pass=$("admin-pass").value;
   if(pass===ADMIN_PASS){
     window.adminIn=true;hide("admin-login");show("admin-dash");
-    if(!S.token)show("admin-auth-banner");
-    else{hide("admin-auth-banner");loadReceipts();}
+    hide("admin-auth-banner");loadReceipts();
   } else { show("admin-error"); }
 }
 function adminLogout(){window.adminIn=false;$("admin-pass").value="";hide("admin-dash");show("admin-login");}
 
 function loadReceipts(){
-  if(!S.token)return;
   show("table-loading");hide("table-wrap");hide("table-empty");
   S.selected.clear();updateBulkBar();
   getReceipts().then(function(data){
@@ -790,16 +731,12 @@ function renderDetail(u){
 
 // ── EVENTS ─────────────────────────────────────────────────────────────────
 window.addEventListener("load", function(){
-  initGoogleAuth();
-
   $("nav-user").addEventListener("click",function(){switchView("user");});
   $("nav-admin").addEventListener("click",function(){switchView("admin");});
   $("btn-lang").addEventListener("click",function(){isEn=!isEn;applyLang();});
   $("btn-user-login").addEventListener("click",userLogin);
   $("username-input").addEventListener("keydown",function(e){if(e.key==="Enter")userLogin();});
   $("btn-user-logout").addEventListener("click",userLogout);
-  $("btn-signin").addEventListener("click",signIn);
-  $("btn-admin-signin").addEventListener("click",signIn);
   $("tab-link").addEventListener("click",function(){switchTab("link");});
   $("tab-image").addEventListener("click",function(){switchTab("image");});
   $("tab-history").addEventListener("click",function(){switchTab("history");});
