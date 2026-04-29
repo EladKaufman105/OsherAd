@@ -818,7 +818,11 @@ window.addEventListener("load", function(){
     sortAsc=!sortAsc;
     this.textContent=sortAsc?"📅 ישן → חדש":"📅 חדש → ישן";
     this.classList.toggle("active",sortAsc);
-    S.receipts.sort(function(a,b){return sortAsc?a.uploadedAt.localeCompare(b.uploadedAt):b.uploadedAt.localeCompare(a.uploadedAt);});
+    S.receipts.sort(function(a,b){
+  var da=a.uploadedAt.split(" ").reverse().join(" ");
+  var db=b.uploadedAt.split(" ").reverse().join(" ");
+  return sortAsc?da.localeCompare(db):db.localeCompare(da);
+});
     renderTable();
   });
   $("atab-all").addEventListener("click",function(){setAdminTab("all");});
