@@ -432,12 +432,13 @@ var isEn = false;
 function apiGet(action, params) {
   var url = API_URL + "?action=" + action;
   if (params) Object.keys(params).forEach(function(k){ url += "&"+k+"="+encodeURIComponent(params[k]); });
-  return fetch(url).then(function(r){return r.json();});
+  return fetch(url, {redirect:"follow"}).then(function(r){return r.json();});
 }
 
 function apiPost(data) {
   return fetch(API_URL, {
     method: "POST",
+    redirect: "follow",
     body: JSON.stringify(data)
   }).then(function(r){return r.json();});
 }
