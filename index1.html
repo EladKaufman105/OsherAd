@@ -373,7 +373,7 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--pr
         <button data-filter="הכל" class="filter-btn active">הכל</button>
         <button data-filter="לא נבדק" class="filter-btn">⏳ לא נבדק</button>
         <button data-filter="נבדק" class="filter-btn">✅ נבדק</button>
-        <button id="btn-sort" class="filter-btn">📅 חדש → ישן</button>
+        <button id="btn-sort" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--light);color:#475569;cursor:pointer;font-weight:600;font-size:13px;font-family:inherit;transition:all .2s">📅 חדש → ישן</button>
         <input id="search-input" style="flex:1;min-width:140px;padding:8px 12px" placeholder="🔍 חיפוש..." dir="rtl"/>
       </div>
       <div id="bulk-bar" class="hidden">
@@ -817,10 +817,10 @@ window.addEventListener("load", function(){
   $("btn-sort").addEventListener("click",function(){
     sortAsc=!sortAsc;
     this.textContent=sortAsc?"📅 ישן → חדש":"📅 חדש → ישן";
-    this.classList.toggle("active",sortAsc);
-    S.receipts.sort(function(a,b){
-  return sortAsc ? a.rowIndex-b.rowIndex : b.rowIndex-a.rowIndex;
-});
+    this.style.background=sortAsc?"var(--primary)":"var(--light)";
+    this.style.color=sortAsc?"#fff":"#475569";
+    this.style.borderColor=sortAsc?"var(--primary)":"var(--border)";
+    S.receipts.sort(function(a,b){ return sortAsc ? a.rowIndex-b.rowIndex : b.rowIndex-a.rowIndex; });
     renderTable();
   });
   $("atab-all").addEventListener("click",function(){setAdminTab("all");});
