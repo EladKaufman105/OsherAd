@@ -819,9 +819,7 @@ window.addEventListener("load", function(){
     this.textContent=sortAsc?"📅 ישן → חדש":"📅 חדש → ישן";
     this.classList.toggle("active",sortAsc);
     S.receipts.sort(function(a,b){
-  var da=a.uploadedAt.split(" ").reverse().join(" ");
-  var db=b.uploadedAt.split(" ").reverse().join(" ");
-  return sortAsc?da.localeCompare(db):db.localeCompare(da);
+  return sortAsc ? a.rowIndex-b.rowIndex : b.rowIndex-a.rowIndex;
 });
     renderTable();
   });
