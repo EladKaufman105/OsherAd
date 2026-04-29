@@ -162,7 +162,7 @@ th{padding:10px 14px;text-align:right;font-weight:700;color:#475569;border-botto
 td{padding:10px 14px;border-bottom:1px solid #f1f5f9;color:var(--dark);vertical-align:middle}
 tr:hover td{background:#f0f7ff}
 tr.selected td{background:#eff6ff!important}
-tr.last-viewed td{background:#f0fdf4!important;border-right:3px solid var(--green)}
+tr.last-viewed td{background:#dcfce7!important;transition:background .3s}
 
 /* USERS GRID */
 .users-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
@@ -373,6 +373,7 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--pr
         <button data-filter="הכל" class="filter-btn active">הכל</button>
         <button data-filter="לא נבדק" class="filter-btn">⏳ לא נבדק</button>
         <button data-filter="נבדק" class="filter-btn">✅ נבדק</button>
+        <button id="btn-sort" class="filter-btn">📅 חדש → ישן</button>
         <input id="search-input" style="flex:1;min-width:140px;padding:8px 12px" placeholder="🔍 חיפוש..." dir="rtl"/>
       </div>
       <div id="bulk-bar" class="hidden">
@@ -812,6 +813,14 @@ window.addEventListener("load", function(){
   $("admin-pass").addEventListener("keydown",function(e){if(e.key==="Enter")adminLogin();});
   $("btn-admin-logout").addEventListener("click",adminLogout);
   $("btn-refresh").addEventListener("click",loadReceipts);
+  var sortAsc = false;
+  $("btn-sort").addEventListener("click",function(){
+    sortAsc=!sortAsc;
+    this.textContent=sortAsc?"📅 ישן → חדש":"📅 חדש → ישן";
+    this.classList.toggle("active",sortAsc);
+    S.receipts.sort(function(a,b){return sortAsc?a.uploadedAt.localeCompare(b.uploadedAt):b.uploadedAt.localeCompare(a.uploadedAt);});
+    renderTable();
+  });
   $("atab-all").addEventListener("click",function(){setAdminTab("all");});
   $("atab-users").addEventListener("click",function(){setAdminTab("users");});
   $("stat-users-card").addEventListener("click",function(){setAdminTab("users");});
